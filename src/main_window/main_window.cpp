@@ -16,7 +16,7 @@ MainWindow::MainWindow(QWidget *parent)
 	  _proxyModel{new CustomSortFilterProxyModel(this)},
 	  _delegate{new CustomSystemModelDelegate(this)},
 	  _fsModel{new CustomSystemModel(_thPool, this)},
-	  _rootPath{QDir::rootPath()}
+	  _rootPath{QDir::homePath()}
 {
 	int maxThreadCount = QThread::idealThreadCount();
 
