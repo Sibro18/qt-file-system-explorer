@@ -1,0 +1,8 @@
+astra-developer-test-task (0.1-1) unstable; urgency=medium
+
+  * Initial release.
+  * File system viewer with directory size calculation.
+  * Asynchronous size calculation using QThreadPool.
+  * Custom delegate for size column.
+
+ -- Sibro <brovtsyns@mail.ru>  Sat, 20 Jun 2026 22:29:27 +0300

@@ -1,0 +1,20 @@
+Source: astra-developer-test-task
+Section: devel
+Priority: optional
+Maintainer: Sibro <brovtsyns@mail.ru>
+Rules-Requires-Root: no
+Build-Depends:
+ debhelper-compat (= 13),
+ cmake,
+ qtbase5-dev,
+Standards-Version: 4.6.2
+Homepage: https://github.com/Sibro18/astra_developer_test_task
+
+Package: astra-developer-test-task
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+Description: File system viewer with directory size calculation
+ Qt-based file system browser that displays directory sizes.
+ Features include asynchronous size calculation, filtering, and sorting.

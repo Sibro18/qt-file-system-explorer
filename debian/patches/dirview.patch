@@ -1,0 +1,772 @@
+diff -ruN ./original_dirview/CMakeLists.txt ./modified_dirview/CMakeLists.txt
+--- ./original_dirview/CMakeLists.txt	1970-01-01 03:00:00.000000000 +0300
++++ ./modified_dirview/CMakeLists.txt	2026-06-20 21:31:52.313199154 +0300
+@@ -0,0 +1,34 @@
++cmake_minimum_required(VERSION 3.5)
++
++project(astra_developer_test_task VERSION 0.1 LANGUAGES CXX)
++
++set(CMAKE_INCLUDE_CURRENT_DIR ON)
++
++set(CMAKE_AUTOUIC ON)
++set(CMAKE_AUTOMOC ON)
++set(CMAKE_AUTORCC ON)
++
++set(CMAKE_CXX_STANDARD 17)
++set(CMAKE_CXX_STANDARD_REQUIRED ON)
++
++find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
++find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets)
++
++set(PROJECT_SOURCES
++        src/main.cpp
++        src/main_window/main_window.cpp
++        src/main_window/main_window.h
++		src/custom_system_model_delegate/custom_system_model_delegate.cpp
++		src/custom_system_model_delegate/custom_system_model_delegate.h
++        src/custom_system_model/custom_system_model.h
++        src/custom_system_model/custom_system_model.cpp
++		src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.h
++		src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.cpp
++)
++
++
++add_executable(astra_developer_test_task
++	${PROJECT_SOURCES}
++)
++
++target_link_libraries(astra_developer_test_task PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+diff -ruN ./original_dirview/dirview.pro ./modified_dirview/dirview.pro
+--- ./original_dirview/dirview.pro	2026-06-20 21:30:57.221197787 +0300
++++ ./modified_dirview/dirview.pro	1970-01-01 03:00:00.000000000 +0300
+@@ -1,8 +0,0 @@
+-QT += widgets
+-requires(qtConfig(treeview))
+-
+-SOURCES       = main.cpp
+-
+-# install
+-target.path = $$[QT_INSTALL_EXAMPLES]/widgets/itemviews/dirview
+-INSTALLS += target
+diff -ruN ./original_dirview/main.cpp ./modified_dirview/main.cpp
+--- ./original_dirview/main.cpp	2026-06-20 21:30:57.221197787 +0300
++++ ./modified_dirview/main.cpp	1970-01-01 03:00:00.000000000 +0300
+@@ -1,107 +0,0 @@
+-/****************************************************************************
+-**
+-** Copyright (C) 2020 The Qt Company Ltd.
+-** Contact: https://www.qt.io/licensing/
+-**
+-** This file is part of the examples of the Qt Toolkit.
+-**
+-** $QT_BEGIN_LICENSE:BSD$
+-** Commercial License Usage
+-** Licensees holding valid commercial Qt licenses may use this file in
+-** accordance with the commercial license agreement provided with the
+-** Software or, alternatively, in accordance with the terms contained in
+-** a written agreement between you and The Qt Company. For licensing terms
+-** and conditions see https://www.qt.io/terms-conditions. For further
+-** information use the contact form at https://www.qt.io/contact-us.
+-**
+-** BSD License Usage
+-** Alternatively, you may use this file under the terms of the BSD license
+-** as follows:
+-**
+-** "Redistribution and use in source and binary forms, with or without
+-** modification, are permitted provided that the following conditions are
+-** met:
+-**   * Redistributions of source code must retain the above copyright
+-**     notice, this list of conditions and the following disclaimer.
+-**   * Redistributions in binary form must reproduce the above copyright
+-**     notice, this list of conditions and the following disclaimer in
+-**     the documentation and/or other materials provided with the
+-**     distribution.
+-**   * Neither the name of The Qt Company Ltd nor the names of its
+-**     contributors may be used to endorse or promote products derived
+-**     from this software without specific prior written permission.
+-**
+-**
+-** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+-** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+-** LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+-** A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+-** OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+-** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+-** LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+-** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+-** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+-** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+-** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
+-**
+-** $QT_END_LICENSE$
+-**
+-****************************************************************************/
+-
+-#include <QApplication>
+-#include <QFileSystemModel>
+-#include <QFileIconProvider>
+-#include <QScreen>
+-#include <QScroller>
+-#include <QTreeView>
+-#include <QCommandLineParser>
+-#include <QCommandLineOption>
+-
+-int main(int argc, char *argv[])
+-{
+-    QApplication app(argc, argv);
+-
+-    QCoreApplication::setApplicationVersion(QT_VERSION_STR);
+-    QCommandLineParser parser;
+-    parser.setApplicationDescription("Qt Dir View Example");
+-    parser.addHelpOption();
+-    parser.addVersionOption();
+-    QCommandLineOption dontUseCustomDirectoryIconsOption("c", "Set QFileSystemModel::DontUseCustomDirectoryIcons");
+-    parser.addOption(dontUseCustomDirectoryIconsOption);
+-    QCommandLineOption dontWatchOption("w", "Set QFileSystemModel::DontWatch");
+-    parser.addOption(dontWatchOption);
+-    parser.addPositionalArgument("directory", "The directory to start in.");
+-    parser.process(app);
+-    const QString rootPath = parser.positionalArguments().isEmpty()
+-        ? QString() : parser.positionalArguments().first();
+-
+-    QFileSystemModel model;
+-    model.setRootPath("");
+-    if (parser.isSet(dontUseCustomDirectoryIconsOption))
+-        model.setOption(QFileSystemModel::DontUseCustomDirectoryIcons);
+-    if (parser.isSet(dontWatchOption))
+-        model.setOption(QFileSystemModel::DontWatchForChanges);
+-    QTreeView tree;
+-    tree.setModel(&model);
+-    if (!rootPath.isEmpty()) {
+-        const QModelIndex rootIndex = model.index(QDir::cleanPath(rootPath));
+-        if (rootIndex.isValid())
+-            tree.setRootIndex(rootIndex);
+-    }
+-
+-    // Demonstrating look and feel features
+-    tree.setAnimated(false);
+-    tree.setIndentation(20);
+-    tree.setSortingEnabled(true);
+-    const QSize availableSize = tree.screen()->availableGeometry().size();
+-    tree.resize(availableSize / 2);
+-    tree.setColumnWidth(0, tree.width() / 3);
+-
+-    // Make it flickable on touchscreens
+-    QScroller::grabGesture(&tree, QScroller::TouchGesture);
+-
+-    tree.setWindowTitle(QObject::tr("Dir View"));
+-    tree.show();
+-
+-    return app.exec();
+-}
+diff -ruN ./original_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.cpp ./modified_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.cpp
+--- ./original_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.cpp	1970-01-01 03:00:00.000000000 +0300
++++ ./modified_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.cpp	2026-06-20 21:31:52.313199154 +0300
+@@ -0,0 +1,40 @@
++#include "custom_sort_filter_proxy_model.h"
++
++CustomSortFilterProxyModel::CustomSortFilterProxyModel(QObject* parent)
++	: QSortFilterProxyModel(parent)
++{}
++
++bool CustomSortFilterProxyModel::filterAcceptsRow(int source_row, const QModelIndex& source_parent) const
++{
++	return _hasMatchingDescendant(source_row, source_parent);
++}
++
++bool CustomSortFilterProxyModel::_hasMatchingDescendant(int source_row, const QModelIndex& source_parent) const
++{
++	// Checking source element accurate the filter.
++	if (QSortFilterProxyModel::filterAcceptsRow(source_row, source_parent))
++	{
++		return true;
++	}
++
++	QModelIndex sourceIndex = sourceModel()->index(source_row, 0, source_parent);
++
++	// If element has't children, there is nothing to check further.
++	if (!sourceModel()->hasChildren(sourceIndex))
++	{
++		return false;
++	}
++
++	int childCount = sourceModel()->rowCount(sourceIndex);
++
++	// Checking all direct children.
++	for (int i = 0; i < childCount; ++i)
++	{
++		if (_hasMatchingDescendant(i, sourceIndex))
++		{
++			return true;
++		}
++	}
++
++	return false;
++}
+diff -ruN ./original_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.h ./modified_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.h
+--- ./original_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.h	1970-01-01 03:00:00.000000000 +0300
++++ ./modified_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.h	2026-06-20 21:31:52.313199154 +0300
+@@ -0,0 +1,17 @@
++#ifndef CUSTOM_SORT_FILTER_PROXY_MODEL_H
++#define CUSTOM_SORT_FILTER_PROXY_MODEL_H
++
++#include <QSortFilterProxyModel>
++#include <QModelIndex>
++
++class CustomSortFilterProxyModel : public QSortFilterProxyModel
++{
++public:
++	explicit CustomSortFilterProxyModel(QObject *parent = nullptr);
++protected:
++	bool filterAcceptsRow(int source_row, const QModelIndex& source_parent) const override;
++private:
++	bool _hasMatchingDescendant(int source_row, const QModelIndex& source_parent) const;
++};
++
++#endif // CUSTOM_SORT_FILTER_PROXY_MODEL_H
+diff -ruN ./original_dirview/src/custom_system_model/custom_system_model.cpp ./modified_dirview/src/custom_system_model/custom_system_model.cpp
+--- ./original_dirview/src/custom_system_model/custom_system_model.cpp	1970-01-01 03:00:00.000000000 +0300
++++ ./modified_dirview/src/custom_system_model/custom_system_model.cpp	2026-06-20 21:31:52.313199154 +0300
+@@ -0,0 +1,167 @@
++#include <QFileInfo>
++#include <QDir>
++#include <QLocale>
++
++#include "custom_system_model.h"
++
++CustomSystemModel::CustomSystemModel(QThreadPool* threadPool, QObject* parent)
++	: QFileSystemModel(parent),
++	  _threadPool{threadPool ? threadPool : QThreadPool::globalInstance()}
++{}
++
++QVariant CustomSystemModel::data(const QModelIndex& index, int role) const
++{
++	if (!index.isValid())
++	{
++		return QFileSystemModel::data(index, role);
++	}
++
++	if (index.column() == 1)
++	{
++		if (role == Qt::TextAlignmentRole)
++		{
++			return QVariant(Qt::AlignHCenter | Qt::AlignVCenter);
++		}
++
++		const QString path = filePath(index);
++
++		if (role == CustomRoles::InProgressRole)
++		{
++			QReadLocker lock(&_cacheMutex);
++			return _inProgress.contains(path);
++		}
++		else if (role == Qt::DisplayRole)
++		{
++			QString sizeValue;
++			{
++				QReadLocker lock(&_cacheMutex);
++				sizeValue = _sizeCache.value(path);
++			}
++
++			return !sizeValue.isEmpty() ? sizeValue : QFileSystemModel::data(index, role);
++		}
++	}
++
++	return QFileSystemModel::data(index, role);
++}
++
++QVariant CustomSystemModel::headerData(int section, Qt::Orientation orientation, int role) const
++{
++	if (role == Qt::TextAlignmentRole)
++	{
++		return QVariant(Qt::AlignHCenter | Qt::AlignVCenter);
++	}
++
++	return QFileSystemModel::headerData(section, orientation, role);
++}
++
++void CustomSystemModel::calculateAndSetDirSize(const QModelIndex& index)
++{
++	if (!index.isValid())
++	{
++		return;
++	}
++
++	QFileInfo info = fileInfo(index);
++
++	if (!info.isDir())
++	{
++		return;
++	}
++
++	QString path = info.absoluteFilePath();
++
++	{
++		QWriteLocker lock(&_cacheMutex);
++
++		if (_inProgress.contains(path))
++		{
++			return;
++		}
++
++		_inProgress.insert(path);
++	}
++
++	emit dataChanged(index, index, {CustomRoles::InProgressRole});
++
++	_threadPool->start([this, path, persistentIndex = QPersistentModelIndex(index)]() {
++		if (!persistentIndex.isValid())
++		{
++			QWriteLocker lock(&_cacheMutex);
++			_inProgress.remove(path);
++
++			return;
++		}
++
++		qint64 size = _calculateDirSize(path);
++		{
++			QWriteLocker lock(&_cacheMutex);
++			_inProgress.remove(path);
++			_sizeCache[path] = _formatSize(size);
++		}
++
++		QMetaObject::invokeMethod(this, [this, persistentIndex]() {
++			if (persistentIndex.isValid())
++			{
++				emit dataChanged(persistentIndex, persistentIndex, {Qt::DisplayRole, CustomRoles::InProgressRole});
++			}
++		}, Qt::QueuedConnection);
++	});
++}
++
++qint64 CustomSystemModel::_calculateDirSize(const QString& path) const
++{
++	qint64 totalSize = 0;
++	QVector<QString> dirsToVisit;
++	dirsToVisit.reserve(256);
++
++	dirsToVisit.push_back(path);
++
++	while (!dirsToVisit.isEmpty())
++	{
++		const QString currentDir = dirsToVisit.takeLast();
++
++		QDirIterator it(currentDir,
++			QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden,
++			QDirIterator::NoIteratorFlags
++		);
++
++		while (it.hasNext())
++		{
++			it.next();
++			const QFileInfo info = it.fileInfo();
++
++			// ignore symlinks.
++			if (info.isSymLink())
++			{
++				continue;
++			}
++
++			if (info.isDir())
++			{
++				dirsToVisit.push_back(info.filePath());
++			}
++			else
++			{
++				totalSize += info.size();
++			}
++		}
++	}
++
++	return totalSize;
++}
++
++QString CustomSystemModel::_formatSize(qint64 bytes) const
++{
++	int precision = 2;
++	if (bytes < 1024)
++	{
++		precision = 0;
++	}
++	else if (bytes < 1024LL * 1024 * 1024)
++	{
++		precision = 1;
++	}
++
++	return QLocale::system().formattedDataSize(bytes, precision, QLocale::DataSizeIecFormat);
++}
+diff -ruN ./original_dirview/src/custom_system_model/custom_system_model.h ./modified_dirview/src/custom_system_model/custom_system_model.h
+--- ./original_dirview/src/custom_system_model/custom_system_model.h	1970-01-01 03:00:00.000000000 +0300
++++ ./modified_dirview/src/custom_system_model/custom_system_model.h	2026-06-20 21:31:52.313199154 +0300
+@@ -0,0 +1,35 @@
++#ifndef CUSTOM_SYSTEM_MODEL_H
++#define CUSTOM_SYSTEM_MODEL_H
++
++#include <QFileSystemModel>
++#include <QVariant>
++#include <QModelIndex>
++#include <QThreadPool>
++#include <QReadWriteLock>
++#include <QHash>
++#include <QSet>
++
++class CustomSystemModel : public QFileSystemModel
++{
++	Q_OBJECT
++public:
++	enum CustomRoles
++	{
++		InProgressRole = Qt::UserRole + 1,
++	};
++
++	explicit CustomSystemModel(QThreadPool* threadPool, QObject* parent = nullptr);
++	QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
++	QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
++	void calculateAndSetDirSize(const QModelIndex& index);
++private:
++	mutable QReadWriteLock _cacheMutex;
++	QHash<QString, QString> _sizeCache;
++	QSet<QString> _inProgress;
++	QThreadPool* _threadPool;
++
++	qint64 _calculateDirSize(const QString& path) const;
++	QString _formatSize(qint64 bytes) const;
++};
++
++#endif // CUSTOM_SYSTEM_MODEL_H
+diff -ruN ./original_dirview/src/custom_system_model_delegate/custom_system_model_delegate.cpp ./modified_dirview/src/custom_system_model_delegate/custom_system_model_delegate.cpp
+--- ./original_dirview/src/custom_system_model_delegate/custom_system_model_delegate.cpp	1970-01-01 03:00:00.000000000 +0300
++++ ./modified_dirview/src/custom_system_model_delegate/custom_system_model_delegate.cpp	2026-06-20 21:31:52.313199154 +0300
+@@ -0,0 +1,99 @@
++#include <QPainterPath>
++#include <QPen>
++#include <QColor>
++
++#include "custom_system_model_delegate.h"
++#include "../custom_system_model/custom_system_model.h"
++
++CustomSystemModelDelegate::CustomSystemModelDelegate(QObject* parent)
++    : QStyledItemDelegate(parent)
++{}
++
++void CustomSystemModelDelegate::paint(
++	QPainter* painter,
++	const QStyleOptionViewItem& option,
++	const QModelIndex& index
++) const
++{
++	if (!index.isValid()) {
++		return;
++	}
++
++	const bool isInProgress = index.data(CustomSystemModel::CustomRoles::InProgressRole).toBool();
++	const bool hasSize = !index.data(Qt::DisplayRole).toString().isEmpty();
++
++	// size already calculated and not in progress => use parent paint.
++	if (hasSize && !isInProgress) {
++		QStyledItemDelegate::paint(painter, option, index);
++		return;
++	}
++
++	ButtonState state{
++		static_cast<bool>(option.state & QStyle::State_MouseOver),
++		static_cast<bool>(option.state & QStyle::State_Selected),
++		isInProgress
++	};
++
++	_paintButton(painter, option, state);
++}
++
++void CustomSystemModelDelegate::_paintButton(
++	QPainter* painter,
++	const QStyleOptionViewItem& option,
++	const ButtonState& state
++) const
++{
++	painter->save();
++	painter->setRenderHint(QPainter::Antialiasing);
++
++	const QRectF rect = option.rect.adjusted(3, 3, -3, -3);
++
++	_paintButtonBorder(painter, rect, state);
++	_paintButtonText(painter, option.rect, state.isInProgress);
++
++	painter->restore();
++}
++
++void CustomSystemModelDelegate::_paintButtonBorder(
++	QPainter* painter,
++	const QRectF& rect,
++	const ButtonState& state
++) const
++{
++	QPainterPath path;
++	path.addRoundedRect(rect, 5, 5);
++
++	QColor borderColor;
++	qreal borderWidth;
++
++	if (state.isSelected) {
++		borderColor = kBorderPressed;
++		borderWidth = 2.0;
++	} else if (state.isHovered) {
++		borderColor = kBorderHover;
++		borderWidth = 1;
++	} else {
++		borderColor = kBorderDefault;
++		borderWidth = 1;
++	}
++
++	QPen pen(borderColor, borderWidth);
++	painter->setPen(pen);
++	painter->drawPath(path);
++}
++
++void CustomSystemModelDelegate::_paintButtonText(
++	QPainter* painter,
++	const QRect& rect,
++	bool isInProgress
++) const
++{
++	painter->setPen(Qt::black);
++	painter->drawText(
++		rect,
++		Qt::AlignCenter,
++		isInProgress
++			? QStringLiteral("Processing")
++			: QStringLiteral("Calculate")
++	);
++}
+diff -ruN ./original_dirview/src/custom_system_model_delegate/custom_system_model_delegate.h ./modified_dirview/src/custom_system_model_delegate/custom_system_model_delegate.h
+--- ./original_dirview/src/custom_system_model_delegate/custom_system_model_delegate.h	1970-01-01 03:00:00.000000000 +0300
++++ ./modified_dirview/src/custom_system_model_delegate/custom_system_model_delegate.h	2026-06-20 21:31:52.313199154 +0300
+@@ -0,0 +1,45 @@
++#ifndef CUSTOM_SYSTEM_MODEL_DELEGATE_H
++#define CUSTOM_SYSTEM_MODEL_DELEGATE_H
++
++#include <QStyledItemDelegate>
++#include <QModelIndex>
++#include <QPainter>
++
++class CustomSystemModelDelegate : public QStyledItemDelegate
++{
++	Q_OBJECT
++public:
++	explicit CustomSystemModelDelegate(QObject* parent = nullptr);
++	void paint(
++		QPainter* painter,
++		const QStyleOptionViewItem& option,
++		const QModelIndex& index
++	) const override;
++private:
++	struct ButtonState {
++		bool isHovered;
++		bool isSelected;
++		bool isInProgress;
++	};
++
++	void _paintButton(
++		QPainter* painter,
++		const QStyleOptionViewItem& option,
++		const ButtonState& state) const;
++	void _paintButtonBorder(
++		QPainter* painter,
++		const QRectF& rect,
++		const ButtonState& state
++	) const;
++	void _paintButtonText(
++		QPainter* painter,
++		const QRect& rect,
++		bool isInProgress
++	) const;
++
++	static constexpr QColor kBorderDefault{180, 180, 180, 120};
++	static constexpr QColor kBorderHover{80, 160, 230, 180};
++	static constexpr QColor kBorderPressed{60, 140, 210, 220};
++};
++
++#endif // CUSTOM_SYSTEM_MODEL_DELEGATE_H
+diff -ruN ./original_dirview/src/main.cpp ./modified_dirview/src/main.cpp
+--- ./original_dirview/src/main.cpp	1970-01-01 03:00:00.000000000 +0300
++++ ./modified_dirview/src/main.cpp	2026-06-20 21:31:52.313199154 +0300
+@@ -0,0 +1,12 @@
++#include <QApplication>
++#include "main_window/main_window.h"
++
++int main(int argc, char *argv[])
++{
++	QApplication a(argc, argv);
++
++	MainWindow w;
++	w.show();
++
++	return a.exec();
++}
+diff -ruN ./original_dirview/src/main_window/main_window.cpp ./modified_dirview/src/main_window/main_window.cpp
+--- ./original_dirview/src/main_window/main_window.cpp	1970-01-01 03:00:00.000000000 +0300
++++ ./modified_dirview/src/main_window/main_window.cpp	2026-06-20 21:31:52.313199154 +0300
+@@ -0,0 +1,118 @@
++#include <QDir>
++#include <QSize>
++#include <QThread>
++#include <QHeaderView>
++#include <QGuiApplication>
++#include <QScreen>
++
++#include "main_window.h"
++
++MainWindow::MainWindow(QWidget *parent)
++	: QMainWindow(parent),
++	  _layout{new QVBoxLayout},
++	  _treeView{new QTreeView},
++	  _lineEdit{new QLineEdit},
++	  _thPool{new QThreadPool(this)},
++	  _proxyModel{new CustomSortFilterProxyModel(this)},
++	  _delegate{new CustomSystemModelDelegate(this)},
++	  _fsModel{new CustomSystemModel(_thPool, this)},
++	  _rootPath{QDir::homePath()}
++{
++	int maxThreadCount = QThread::idealThreadCount();
++
++	if (maxThreadCount < 2)
++	{
++		maxThreadCount = 2;
++	}
++
++	_thPool->setMaxThreadCount(
++		qMax(1, static_cast<int>(maxThreadCount * kThreadPoolUsageRatio))
++	);
++
++	_fsModel->setFilter(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden);
++	_fsModel->setNameFilterDisables(false);
++	_fsModel->setRootPath(_rootPath);
++
++	_proxyModel->setSourceModel(_fsModel);
++	_proxyModel->setFilterKeyColumn(0);
++	_proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
++
++	_setupUi();
++
++	connect(
++		_treeView,
++		&QTreeView::clicked,
++		this,
++		&MainWindow::onTreeViewItemClicked
++	);
++	connect(
++		_lineEdit,
++		&QLineEdit::textChanged,
++		this,
++		&MainWindow::onLineEditTextChanged
++	);
++}
++
++void MainWindow::_setupUi()
++{
++	auto* widget = new QWidget(this);
++
++	_layout->addWidget(_lineEdit);
++	_layout->addWidget(_treeView);
++	widget->setLayout(_layout);
++
++	_treeView->setModel(_proxyModel);
++	_treeView->setItemDelegateForColumn(1, _delegate);
++	_treeView->setEditTriggers(QAbstractItemView::CurrentChanged | QAbstractItemView::SelectedClicked);
++	_treeView->setAnimated(false);
++	_treeView->setIndentation(kTreeViewIndentation);
++	_treeView->setSortingEnabled(true);
++	_treeView->header()->setSectionResizeMode(QHeaderView::Stretch);
++	_resetRootIndex();
++
++
++	setCentralWidget(widget);
++	setWindowTitle("Astra test task");
++
++	// Centering the window.
++	int x = 0, y = 0;
++
++	if (QScreen* screen = QGuiApplication::primaryScreen())
++	{
++		const QRect screenGeometry = screen->availableGeometry();
++		x = (screenGeometry.width() - kDefaultWindowWidth) / 2;
++		y = (screenGeometry.height() - kDefaultWindowHeight) / 2;
++	}
++
++	setGeometry(x, y, kDefaultWindowWidth, kDefaultWindowHeight);
++}
++
++void MainWindow::onLineEditTextChanged(const QString& text)
++{
++	_proxyModel->setFilterWildcard(
++		QString("*%1*").arg(text)
++	);
++	_resetRootIndex();
++}
++
++void MainWindow::onTreeViewItemClicked(const QModelIndex& index)
++{
++	if (!index.isValid() || index.column() != 1)
++	{
++		return;
++	}
++
++	if (index.data(Qt::DisplayRole).toString().isEmpty())
++	{
++		_fsModel->calculateAndSetDirSize(_proxyModel->mapToSource(index));
++	}
++}
++
++void MainWindow::_resetRootIndex()
++{
++	_treeView->setRootIndex(
++		_proxyModel->mapFromSource(
++			_fsModel->index(_rootPath)
++		)
++	);
++}
+diff -ruN ./original_dirview/src/main_window/main_window.h ./modified_dirview/src/main_window/main_window.h
+--- ./original_dirview/src/main_window/main_window.h	1970-01-01 03:00:00.000000000 +0300
++++ ./modified_dirview/src/main_window/main_window.h	2026-06-20 21:31:52.313199154 +0300
+@@ -0,0 +1,42 @@
++#ifndef MAIN_WINDOW_H
++#define MAIN_WINDOW_H
++
++#include <QMainWindow>
++#include <QTreeView>
++#include <QVBoxLayout>
++#include <QLineEdit>
++#include <QThreadPool>
++#include <QModelIndex>
++
++#include "../custom_system_model/custom_system_model.h"
++#include "../custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.h"
++#include "../custom_system_model_delegate/custom_system_model_delegate.h"
++
++class MainWindow : public QMainWindow
++{
++	Q_OBJECT
++public:
++	explicit MainWindow(QWidget *parent = nullptr);
++private slots:
++	void onTreeViewItemClicked(const QModelIndex& index);
++	void onLineEditTextChanged(const QString& text);
++private:
++	QVBoxLayout* _layout;
++	QTreeView* _treeView;
++	QLineEdit* _lineEdit;
++	QThreadPool* _thPool;
++	CustomSortFilterProxyModel* _proxyModel;
++	CustomSystemModelDelegate* _delegate;
++	CustomSystemModel* _fsModel;
++	const QString _rootPath;
++
++	void _setupUi();
++	void _resetRootIndex();
++
++	static constexpr int kDefaultWindowWidth = 800;
++	static constexpr int kDefaultWindowHeight = 400;
++	static constexpr int kTreeViewIndentation = 20;
++	static constexpr double kThreadPoolUsageRatio = 0.5;
++};
++
++#endif // MAIN_WINDOW_H
