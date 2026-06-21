@@ -23,7 +23,7 @@ private slots:
 	void testMixedContent();
 
 private:
-	// Вспомогательный метод для создания файла заданного размера
+	// Supporting method for creating a file of a given size
 	bool _createFileWithSize(const QString& path, qint64 size);
 };
 

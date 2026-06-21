@@ -5,15 +5,15 @@ bool TestFileUtils::_createFileWithSize(const QString& path, qint64 size)
 {
 	QFile file(path);
 
-	if (!file.open(QIODevice::WriteOnly))
+	if (file.open(QIODevice::WriteOnly))
 	{
-		return false;
+		file.write(QByteArray(static_cast<int>(size), '\0'));
+		file.close();
+
+		return true;
 	}
 
-	file.write(QByteArray(static_cast<int>(size), '\0'));
-	file.close();
-
-	return true;
+	return false;
 }
 
 void TestFileUtils::testEmptyDirectory()
@@ -74,7 +74,8 @@ void TestFileUtils::testDeepNesting()
 
 	// 100 lvl deep
 	QString currentPath = tempDir.path();
-	for (int i = 0; i < 100; ++i) {
+	for (int i = 0; i < 100; i++)
+	{
 		currentPath += "/level" + QString::number(i);
 		QVERIFY(QDir(tempDir.path()).mkpath(currentPath));
 	}

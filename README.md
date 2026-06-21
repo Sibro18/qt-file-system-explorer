@@ -41,6 +41,11 @@ cd astra_developer_test_task
   astra_developer_test_task
   ```
 
+## 6. Удаление установленного приложения:
+  ```bash
+  sudo apt-get remove -y astra-developer-test-task
+  ```
+  
 # Сборка из исходников
 
 ## 1. Клонирование репозитория

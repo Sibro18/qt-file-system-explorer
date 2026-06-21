@@ -1,6 +1,6 @@
 diff -ruN original_dirview/CMakeLists.txt modified_dirview/CMakeLists.txt
 --- original_dirview/CMakeLists.txt	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/CMakeLists.txt	2026-06-21 13:08:02.848851256 +0300
++++ modified_dirview/CMakeLists.txt	2026-06-21 14:59:35.569674384 +0300
 @@ -0,0 +1,49 @@
 +cmake_minimum_required(VERSION 3.5)
 +
@@ -176,8 +176,8 @@ diff -ruN original_dirview/main.cpp modified_dirview/main.cpp
 -}
 diff -ruN original_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.cpp modified_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.cpp
 --- original_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.cpp	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.cpp	2026-06-21 13:07:56.733795103 +0300
-@@ -0,0 +1,40 @@
++++ modified_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.cpp	2026-06-21 14:59:24.909674120 +0300
+@@ -0,0 +1,94 @@
 +#include "custom_sort_filter_proxy_model.h"
 +
 +CustomSortFilterProxyModel::CustomSortFilterProxyModel(QObject* parent)
@@ -186,33 +186,87 @@ diff -ruN original_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter
 +
 +bool CustomSortFilterProxyModel::filterAcceptsRow(int source_row, const QModelIndex& source_parent) const
 +{
++	QModelIndex sourceIndex = sourceModel()->index(source_row, 0, source_parent);
++
++	// Guard against invalid idx's
++	if (!sourceIndex.isValid())
++	{
++		return false;
++	}
++
++	// if item not present in proxy model, search only in children.
++	if (!source_parent.isValid())
++	{
++		return _hasMatchingDescendantInChildren(sourceIndex);
++	}
++
++	// For other items: check self or descendants
 +	return _hasMatchingDescendant(source_row, source_parent);
 +}
 +
 +bool CustomSortFilterProxyModel::_hasMatchingDescendant(int source_row, const QModelIndex& source_parent) const
 +{
-+	// Checking source element accurate the filter.
++	QModelIndex sourceIndex = sourceModel()->index(source_row, 0, source_parent);
++
++	if (!sourceIndex.isValid())
++	{
++		return false;
++	}
++
++	// If the item itself matches the filter, accept it immediately
 +	if (QSortFilterProxyModel::filterAcceptsRow(source_row, source_parent))
 +	{
 +		return true;
 +	}
 +
-+	QModelIndex sourceIndex = sourceModel()->index(source_row, 0, source_parent);
++	// Otherwise, check if any descendant matches.
++	return _hasMatchingDescendantInChildren(sourceIndex);
++}
 +
-+	// If element has't children, there is nothing to check further.
-+	if (!sourceModel()->hasChildren(sourceIndex))
++bool CustomSortFilterProxyModel::_hasMatchingDescendantInChildren(const QModelIndex& parentIndex) const
++{
++	// if source invalid or not has children => not accurate.
++	if (!parentIndex.isValid() || !sourceModel()->hasChildren(parentIndex))
 +	{
 +		return false;
 +	}
 +
-+	int childCount = sourceModel()->rowCount(sourceIndex);
++	// Use a stack for iterative depth-first search.
++	QVector<QModelIndex> nodesToCheck;
 +
-+	// Checking all direct children.
-+	for (int i = 0; i < childCount; ++i)
++	// Initialize stack with direct children.
++	for (int i = 0; i < sourceModel()->rowCount(parentIndex); i++)
 +	{
-+		if (_hasMatchingDescendant(i, sourceIndex))
++		QModelIndex child = sourceModel()->index(i, 0, parentIndex);
++
++		if (child.isValid())
++		{
++			nodesToCheck.push_back(child);
++		}
++	}
++
++	while (!nodesToCheck.isEmpty())
++	{
++		QModelIndex currentIdx = nodesToCheck.takeLast();
++
++		// Check if current node matches the filter.
++		if (QSortFilterProxyModel::filterAcceptsRow(currentIdx.row(), currentIdx.parent()))
 +		{
 +			return true;
++		}
++
++		// Push children to stack for further checking.
++		if (sourceModel()->hasChildren(currentIdx))
++		{
++			for (int i = 0; i < sourceModel()->rowCount(currentIdx); i++)
++			{
++				QModelIndex subChild = sourceModel()->index(i, 0, currentIdx);
++
++				if (subChild.isValid())
++				{
++					nodesToCheck.push_back(subChild);
++				}
++			}
 +		}
 +	}
 +
@@ -220,8 +274,8 @@ diff -ruN original_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter
 +}
 diff -ruN original_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.h modified_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.h
 --- original_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.h	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.h	2026-06-21 13:07:56.733795103 +0300
-@@ -0,0 +1,17 @@
++++ modified_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.h	2026-06-21 14:59:24.909674120 +0300
+@@ -0,0 +1,18 @@
 +#ifndef CUSTOM_SORT_FILTER_PROXY_MODEL_H
 +#define CUSTOM_SORT_FILTER_PROXY_MODEL_H
 +
@@ -236,12 +290,13 @@ diff -ruN original_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter
 +	bool filterAcceptsRow(int source_row, const QModelIndex& source_parent) const override;
 +private:
 +	bool _hasMatchingDescendant(int source_row, const QModelIndex& source_parent) const;
++	bool _hasMatchingDescendantInChildren(const QModelIndex& parentIndex) const;
 +};
 +
 +#endif // CUSTOM_SORT_FILTER_PROXY_MODEL_H
 diff -ruN original_dirview/src/custom_system_model/custom_system_model.cpp modified_dirview/src/custom_system_model/custom_system_model.cpp
 --- original_dirview/src/custom_system_model/custom_system_model.cpp	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/custom_system_model/custom_system_model.cpp	2026-06-21 13:07:56.733795103 +0300
++++ modified_dirview/src/custom_system_model/custom_system_model.cpp	2026-06-21 14:59:24.909674120 +0300
 @@ -0,0 +1,106 @@
 +#include <QFileInfo>
 +#include <QDir>
@@ -351,7 +406,7 @@ diff -ruN original_dirview/src/custom_system_model/custom_system_model.cpp modif
 +}
 diff -ruN original_dirview/src/custom_system_model/custom_system_model.h modified_dirview/src/custom_system_model/custom_system_model.h
 --- original_dirview/src/custom_system_model/custom_system_model.h	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/custom_system_model/custom_system_model.h	2026-06-21 13:07:56.733795103 +0300
++++ modified_dirview/src/custom_system_model/custom_system_model.h	2026-06-21 14:59:24.909674120 +0300
 @@ -0,0 +1,32 @@
 +#ifndef CUSTOM_SYSTEM_MODEL_H
 +#define CUSTOM_SYSTEM_MODEL_H
@@ -387,7 +442,7 @@ diff -ruN original_dirview/src/custom_system_model/custom_system_model.h modifie
 +#endif // CUSTOM_SYSTEM_MODEL_H
 diff -ruN original_dirview/src/custom_system_model_delegate/custom_system_model_delegate.cpp modified_dirview/src/custom_system_model_delegate/custom_system_model_delegate.cpp
 --- original_dirview/src/custom_system_model_delegate/custom_system_model_delegate.cpp	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/custom_system_model_delegate/custom_system_model_delegate.cpp	2026-06-21 13:07:56.733795103 +0300
++++ modified_dirview/src/custom_system_model_delegate/custom_system_model_delegate.cpp	2026-06-21 14:59:24.909674120 +0300
 @@ -0,0 +1,107 @@
 +#include <QPainterPath>
 +#include <QPen>
@@ -498,7 +553,7 @@ diff -ruN original_dirview/src/custom_system_model_delegate/custom_system_model_
 +}
 diff -ruN original_dirview/src/custom_system_model_delegate/custom_system_model_delegate.h modified_dirview/src/custom_system_model_delegate/custom_system_model_delegate.h
 --- original_dirview/src/custom_system_model_delegate/custom_system_model_delegate.h	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/custom_system_model_delegate/custom_system_model_delegate.h	2026-06-21 13:07:56.733795103 +0300
++++ modified_dirview/src/custom_system_model_delegate/custom_system_model_delegate.h	2026-06-21 14:59:24.909674120 +0300
 @@ -0,0 +1,46 @@
 +#ifndef CUSTOM_SYSTEM_MODEL_DELEGATE_H
 +#define CUSTOM_SYSTEM_MODEL_DELEGATE_H
@@ -548,7 +603,7 @@ diff -ruN original_dirview/src/custom_system_model_delegate/custom_system_model_
 +#endif // CUSTOM_SYSTEM_MODEL_DELEGATE_H
 diff -ruN original_dirview/src/main.cpp modified_dirview/src/main.cpp
 --- original_dirview/src/main.cpp	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/main.cpp	2026-06-21 13:07:56.733795103 +0300
++++ modified_dirview/src/main.cpp	2026-06-21 14:59:24.909674120 +0300
 @@ -0,0 +1,12 @@
 +#include <QApplication>
 +#include "main_window/main_window.h"
@@ -564,7 +619,7 @@ diff -ruN original_dirview/src/main.cpp modified_dirview/src/main.cpp
 +}
 diff -ruN original_dirview/src/main_window/main_window.cpp modified_dirview/src/main_window/main_window.cpp
 --- original_dirview/src/main_window/main_window.cpp	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/main_window/main_window.cpp	2026-06-21 13:07:56.733795103 +0300
++++ modified_dirview/src/main_window/main_window.cpp	2026-06-21 14:59:24.909674120 +0300
 @@ -0,0 +1,117 @@
 +#include <QDir>
 +#include <QSize>
@@ -685,7 +740,7 @@ diff -ruN original_dirview/src/main_window/main_window.cpp modified_dirview/src/
 +}
 diff -ruN original_dirview/src/main_window/main_window.h modified_dirview/src/main_window/main_window.h
 --- original_dirview/src/main_window/main_window.h	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/main_window/main_window.h	2026-06-21 13:07:56.733795103 +0300
++++ modified_dirview/src/main_window/main_window.h	2026-06-21 14:59:24.909674120 +0300
 @@ -0,0 +1,42 @@
 +#ifndef MAIN_WINDOW_H
 +#define MAIN_WINDOW_H
@@ -731,7 +786,7 @@ diff -ruN original_dirview/src/main_window/main_window.h modified_dirview/src/ma
 +#endif // MAIN_WINDOW_H
 diff -ruN original_dirview/src/utils/CMakeLists.txt modified_dirview/src/utils/CMakeLists.txt
 --- original_dirview/src/utils/CMakeLists.txt	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/utils/CMakeLists.txt	2026-06-21 13:07:56.733795103 +0300
++++ modified_dirview/src/utils/CMakeLists.txt	2026-06-21 14:59:24.909674120 +0300
 @@ -0,0 +1,14 @@
 +add_library(utils STATIC
 +	format_utils/format_utils.cpp
@@ -749,7 +804,7 @@ diff -ruN original_dirview/src/utils/CMakeLists.txt modified_dirview/src/utils/C
 +)
 diff -ruN original_dirview/src/utils/file_utils/file_utils.cpp modified_dirview/src/utils/file_utils/file_utils.cpp
 --- original_dirview/src/utils/file_utils/file_utils.cpp	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/utils/file_utils/file_utils.cpp	2026-06-21 13:07:56.733795103 +0300
++++ modified_dirview/src/utils/file_utils/file_utils.cpp	2026-06-21 14:59:24.909674120 +0300
 @@ -0,0 +1,45 @@
 +#include <QVector>
 +#include <QDir>
@@ -798,7 +853,7 @@ diff -ruN original_dirview/src/utils/file_utils/file_utils.cpp modified_dirview/
 +}
 diff -ruN original_dirview/src/utils/file_utils/file_utils.h modified_dirview/src/utils/file_utils/file_utils.h
 --- original_dirview/src/utils/file_utils/file_utils.h	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/utils/file_utils/file_utils.h	2026-06-21 13:07:56.733795103 +0300
++++ modified_dirview/src/utils/file_utils/file_utils.h	2026-06-21 14:59:24.909674120 +0300
 @@ -0,0 +1,13 @@
 +#ifndef FILE_UTILS_H
 +#define FILE_UTILS_H
@@ -815,7 +870,7 @@ diff -ruN original_dirview/src/utils/file_utils/file_utils.h modified_dirview/sr
 +#endif // FILE_UTILS_H
 diff -ruN original_dirview/src/utils/format_utils/format_utils.cpp modified_dirview/src/utils/format_utils/format_utils.cpp
 --- original_dirview/src/utils/format_utils/format_utils.cpp	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/utils/format_utils/format_utils.cpp	2026-06-21 13:07:56.733795103 +0300
++++ modified_dirview/src/utils/format_utils/format_utils.cpp	2026-06-21 14:59:24.909674120 +0300
 @@ -0,0 +1,19 @@
 +#include <QLocale>
 +
@@ -838,7 +893,7 @@ diff -ruN original_dirview/src/utils/format_utils/format_utils.cpp modified_dirv
 +}
 diff -ruN original_dirview/src/utils/format_utils/format_utils.h modified_dirview/src/utils/format_utils/format_utils.h
 --- original_dirview/src/utils/format_utils/format_utils.h	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/utils/format_utils/format_utils.h	2026-06-21 13:07:56.733795103 +0300
++++ modified_dirview/src/utils/format_utils/format_utils.h	2026-06-21 14:59:24.909674120 +0300
 @@ -0,0 +1,13 @@
 +#ifndef FORMAT_UTILS_H
 +#define FORMAT_UTILS_H
