@@ -1,6 +1,6 @@
 diff -ruN original_dirview/CMakeLists.txt modified_dirview/CMakeLists.txt
 --- original_dirview/CMakeLists.txt	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/CMakeLists.txt	2026-06-21 14:59:35.569674384 +0300
++++ modified_dirview/CMakeLists.txt	2026-06-23 20:21:56.208572035 +0300
 @@ -0,0 +1,49 @@
 +cmake_minimum_required(VERSION 3.5)
 +
@@ -176,9 +176,10 @@ diff -ruN original_dirview/main.cpp modified_dirview/main.cpp
 -}
 diff -ruN original_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.cpp modified_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.cpp
 --- original_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.cpp	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.cpp	2026-06-21 14:59:24.909674120 +0300
-@@ -0,0 +1,94 @@
++++ modified_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.cpp	2026-06-23 20:21:38.508571596 +0300
+@@ -0,0 +1,32 @@
 +#include "custom_sort_filter_proxy_model.h"
++#include "../custom_system_model/custom_system_model.h"
 +
 +CustomSortFilterProxyModel::CustomSortFilterProxyModel(QObject* parent)
 +	: QSortFilterProxyModel(parent)
@@ -186,96 +187,33 @@ diff -ruN original_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter
 +
 +bool CustomSortFilterProxyModel::filterAcceptsRow(int source_row, const QModelIndex& source_parent) const
 +{
-+	QModelIndex sourceIndex = sourceModel()->index(source_row, 0, source_parent);
-+
-+	// Guard against invalid idx's
-+	if (!sourceIndex.isValid())
-+	{
-+		return false;
-+	}
-+
-+	// if item not present in proxy model, search only in children.
++	// Guard against an unrepresented index.
 +	if (!source_parent.isValid())
 +	{
-+		return _hasMatchingDescendantInChildren(sourceIndex);
-+	}
-+
-+	// For other items: check self or descendants
-+	return _hasMatchingDescendant(source_row, source_parent);
-+}
-+
-+bool CustomSortFilterProxyModel::_hasMatchingDescendant(int source_row, const QModelIndex& source_parent) const
-+{
-+	QModelIndex sourceIndex = sourceModel()->index(source_row, 0, source_parent);
-+
-+	if (!sourceIndex.isValid())
-+	{
 +		return false;
 +	}
 +
-+	// If the item itself matches the filter, accept it immediately
-+	if (QSortFilterProxyModel::filterAcceptsRow(source_row, source_parent))
-+	{
-+		return true;
-+	}
-+
-+	// Otherwise, check if any descendant matches.
-+	return _hasMatchingDescendantInChildren(sourceIndex);
++	return QSortFilterProxyModel::filterAcceptsRow(source_row, source_parent);
 +}
 +
-+bool CustomSortFilterProxyModel::_hasMatchingDescendantInChildren(const QModelIndex& parentIndex) const
++bool CustomSortFilterProxyModel::lessThan(const QModelIndex &source_left, const QModelIndex &source_right) const
 +{
-+	// if source invalid or not has children => not accurate.
-+	if (!parentIndex.isValid() || !sourceModel()->hasChildren(parentIndex))
++	int column = source_left.column();
++
++	if (column == 1)
 +	{
-+		return false;
++		auto leftSize = sourceModel()->data(source_left, CustomSystemModel::SizeInBytesRole).toLongLong();
++		auto rightSize = sourceModel()->data(source_right, CustomSystemModel::SizeInBytesRole).toLongLong();
++
++		return leftSize < rightSize;
 +	}
 +
-+	// Use a stack for iterative depth-first search.
-+	QVector<QModelIndex> nodesToCheck;
-+
-+	// Initialize stack with direct children.
-+	for (int i = 0; i < sourceModel()->rowCount(parentIndex); i++)
-+	{
-+		QModelIndex child = sourceModel()->index(i, 0, parentIndex);
-+
-+		if (child.isValid())
-+		{
-+			nodesToCheck.push_back(child);
-+		}
-+	}
-+
-+	while (!nodesToCheck.isEmpty())
-+	{
-+		QModelIndex currentIdx = nodesToCheck.takeLast();
-+
-+		// Check if current node matches the filter.
-+		if (QSortFilterProxyModel::filterAcceptsRow(currentIdx.row(), currentIdx.parent()))
-+		{
-+			return true;
-+		}
-+
-+		// Push children to stack for further checking.
-+		if (sourceModel()->hasChildren(currentIdx))
-+		{
-+			for (int i = 0; i < sourceModel()->rowCount(currentIdx); i++)
-+			{
-+				QModelIndex subChild = sourceModel()->index(i, 0, currentIdx);
-+
-+				if (subChild.isValid())
-+				{
-+					nodesToCheck.push_back(subChild);
-+				}
-+			}
-+		}
-+	}
-+
-+	return false;
++	return QSortFilterProxyModel::lessThan(source_left, source_right);
 +}
 diff -ruN original_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.h modified_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.h
 --- original_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.h	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.h	2026-06-21 14:59:24.909674120 +0300
-@@ -0,0 +1,18 @@
++++ modified_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter_proxy_model.h	2026-06-23 20:21:38.508571596 +0300
+@@ -0,0 +1,16 @@
 +#ifndef CUSTOM_SORT_FILTER_PROXY_MODEL_H
 +#define CUSTOM_SORT_FILTER_PROXY_MODEL_H
 +
@@ -288,18 +226,15 @@ diff -ruN original_dirview/src/custom_sort_filter_proxy_model/custom_sort_filter
 +	explicit CustomSortFilterProxyModel(QObject *parent = nullptr);
 +protected:
 +	bool filterAcceptsRow(int source_row, const QModelIndex& source_parent) const override;
-+private:
-+	bool _hasMatchingDescendant(int source_row, const QModelIndex& source_parent) const;
-+	bool _hasMatchingDescendantInChildren(const QModelIndex& parentIndex) const;
++	bool lessThan(const QModelIndex &source_left, const QModelIndex &source_right) const override;
 +};
 +
 +#endif // CUSTOM_SORT_FILTER_PROXY_MODEL_H
 diff -ruN original_dirview/src/custom_system_model/custom_system_model.cpp modified_dirview/src/custom_system_model/custom_system_model.cpp
 --- original_dirview/src/custom_system_model/custom_system_model.cpp	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/custom_system_model/custom_system_model.cpp	2026-06-21 14:59:24.909674120 +0300
-@@ -0,0 +1,106 @@
++++ modified_dirview/src/custom_system_model/custom_system_model.cpp	2026-06-23 20:21:38.508571596 +0300
+@@ -0,0 +1,131 @@
 +#include <QFileInfo>
-+#include <QDir>
 +
 +#include "custom_system_model.h"
 +#include "utils/format_utils/format_utils.h"
@@ -312,38 +247,28 @@ diff -ruN original_dirview/src/custom_system_model/custom_system_model.cpp modif
 +
 +QVariant CustomSystemModel::data(const QModelIndex& index, int role) const
 +{
-+	if (!index.isValid())
++	if (!index.isValid() || index.column() != 1)
 +	{
 +		return QFileSystemModel::data(index, role);
 +	}
 +
-+	if (index.column() == 1)
++	switch (role)
 +	{
-+		if (role == Qt::TextAlignmentRole)
-+		{
++		case Qt::TextAlignmentRole:
 +			return QVariant(Qt::AlignHCenter | Qt::AlignVCenter);
-+		}
 +
-+		const QString path = filePath(index);
++		case CustomRoles::SizeInBytesRole:
++			return _getRawSize(index);
 +
-+		if (role == CustomRoles::InProgressRole)
-+		{
-+			QReadLocker lock(&_cacheMutex);
-+			return _inProgress.contains(path);
-+		}
-+		else if (role == Qt::DisplayRole)
-+		{
-+			QString sizeValue;
-+			{
-+				QReadLocker lock(&_cacheMutex);
-+				sizeValue = _sizeCache.value(path);
-+			}
++		case CustomRoles::InProgressRole:
++			return _getInProgressStatus(index);
 +
-+			return !sizeValue.isEmpty() ? sizeValue : QFileSystemModel::data(index, role);
-+		}
++		case Qt::DisplayRole:
++			return _getFormattedSize(index, role);
++
++		default:
++			return QFileSystemModel::data(index, role);
 +	}
-+
-+	return QFileSystemModel::data(index, role);
 +}
 +
 +QVariant CustomSystemModel::headerData(int section, Qt::Orientation orientation, int role) const
@@ -370,7 +295,7 @@ diff -ruN original_dirview/src/custom_system_model/custom_system_model.cpp modif
 +		return;
 +	}
 +
-+	QString path = info.absoluteFilePath();
++	QString path = filePath(index);
 +
 +	{
 +		QWriteLocker lock(&_cacheMutex);
@@ -394,20 +319,56 @@ diff -ruN original_dirview/src/custom_system_model/custom_system_model.cpp modif
 +			return;
 +		}
 +
-+		qint64 size = FileUtils::calculateDirSize(path);
++		qint64 size = FileUtils::calculateDirSize(path, filter());
 +		{
 +			QWriteLocker lock(&_cacheMutex);
 +			_inProgress.remove(path);
-+			_sizeCache[path] = FormatUtils::formatSize(size);
++			_sizeCache[path] = size;
 +		}
 +
 +		emit dataChanged(persistentIndex, persistentIndex, {Qt::DisplayRole, CustomRoles::InProgressRole});
 +	});
 +}
++
++QVariant CustomSystemModel::_getRawSize(const QModelIndex& index) const
++{
++	const auto fInfo = fileInfo(index);
++
++	if (fInfo.isDir())
++	{
++		QReadLocker lock(&_cacheMutex);
++		return _sizeCache.value(filePath(index));
++	}
++	else
++	{
++		return fInfo.size();
++	}
++}
++
++QVariant CustomSystemModel::_getInProgressStatus(const QModelIndex& index) const
++{
++	QReadLocker lock(&_cacheMutex);
++	return _inProgress.contains(filePath(index));
++}
++
++QVariant CustomSystemModel::_getFormattedSize(const QModelIndex& index, int role) const
++{
++	constexpr qint64 kDefaultSizeValue = -1;
++
++	qint64 sizeValue = kDefaultSizeValue;
++	{
++		QReadLocker lock(&_cacheMutex);
++		sizeValue = _sizeCache.value(filePath(index), kDefaultSizeValue);
++	}
++
++	return sizeValue != kDefaultSizeValue
++		? FormatUtils::formatSize(sizeValue)
++		: QFileSystemModel::data(index, role);
++}
 diff -ruN original_dirview/src/custom_system_model/custom_system_model.h modified_dirview/src/custom_system_model/custom_system_model.h
 --- original_dirview/src/custom_system_model/custom_system_model.h	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/custom_system_model/custom_system_model.h	2026-06-21 14:59:24.909674120 +0300
-@@ -0,0 +1,32 @@
++++ modified_dirview/src/custom_system_model/custom_system_model.h	2026-06-23 20:21:38.508571596 +0300
+@@ -0,0 +1,37 @@
 +#ifndef CUSTOM_SYSTEM_MODEL_H
 +#define CUSTOM_SYSTEM_MODEL_H
 +
@@ -426,6 +387,7 @@ diff -ruN original_dirview/src/custom_system_model/custom_system_model.h modifie
 +	enum CustomRoles
 +	{
 +		InProgressRole = Qt::UserRole + 1,
++		SizeInBytesRole = Qt::UserRole + 2
 +	};
 +
 +	explicit CustomSystemModel(QThreadPool* threadPool, QObject* parent = nullptr);
@@ -434,19 +396,22 @@ diff -ruN original_dirview/src/custom_system_model/custom_system_model.h modifie
 +	void calculateAndSetDirSize(const QModelIndex& index);
 +private:
 +	mutable QReadWriteLock _cacheMutex;
-+	QHash<QString, QString> _sizeCache;
++	QHash<QString, qint64> _sizeCache;
 +	QSet<QString> _inProgress;
 +	QThreadPool* _threadPool;
++
++	QVariant _getRawSize(const QModelIndex& index) const;
++	QVariant _getInProgressStatus(const QModelIndex& index) const;
++	QVariant _getFormattedSize(const QModelIndex& index, int role) const;
 +};
 +
 +#endif // CUSTOM_SYSTEM_MODEL_H
 diff -ruN original_dirview/src/custom_system_model_delegate/custom_system_model_delegate.cpp modified_dirview/src/custom_system_model_delegate/custom_system_model_delegate.cpp
 --- original_dirview/src/custom_system_model_delegate/custom_system_model_delegate.cpp	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/custom_system_model_delegate/custom_system_model_delegate.cpp	2026-06-21 14:59:24.909674120 +0300
-@@ -0,0 +1,107 @@
++++ modified_dirview/src/custom_system_model_delegate/custom_system_model_delegate.cpp	2026-06-23 20:21:38.508571596 +0300
+@@ -0,0 +1,106 @@
 +#include <QPainterPath>
 +#include <QPen>
-+#include <QColor>
 +
 +#include "custom_system_model_delegate.h"
 +#include "../custom_system_model/custom_system_model.h"
@@ -553,14 +518,15 @@ diff -ruN original_dirview/src/custom_system_model_delegate/custom_system_model_
 +}
 diff -ruN original_dirview/src/custom_system_model_delegate/custom_system_model_delegate.h modified_dirview/src/custom_system_model_delegate/custom_system_model_delegate.h
 --- original_dirview/src/custom_system_model_delegate/custom_system_model_delegate.h	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/custom_system_model_delegate/custom_system_model_delegate.h	2026-06-21 14:59:24.909674120 +0300
-@@ -0,0 +1,46 @@
++++ modified_dirview/src/custom_system_model_delegate/custom_system_model_delegate.h	2026-06-23 20:21:38.508571596 +0300
+@@ -0,0 +1,47 @@
 +#ifndef CUSTOM_SYSTEM_MODEL_DELEGATE_H
 +#define CUSTOM_SYSTEM_MODEL_DELEGATE_H
 +
 +#include <QStyledItemDelegate>
 +#include <QModelIndex>
 +#include <QPainter>
++#include <QColor>
 +
 +class CustomSystemModelDelegate : public QStyledItemDelegate
 +{
@@ -603,7 +569,7 @@ diff -ruN original_dirview/src/custom_system_model_delegate/custom_system_model_
 +#endif // CUSTOM_SYSTEM_MODEL_DELEGATE_H
 diff -ruN original_dirview/src/main.cpp modified_dirview/src/main.cpp
 --- original_dirview/src/main.cpp	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/main.cpp	2026-06-21 14:59:24.909674120 +0300
++++ modified_dirview/src/main.cpp	2026-06-23 20:21:38.508571596 +0300
 @@ -0,0 +1,12 @@
 +#include <QApplication>
 +#include "main_window/main_window.h"
@@ -619,12 +585,10 @@ diff -ruN original_dirview/src/main.cpp modified_dirview/src/main.cpp
 +}
 diff -ruN original_dirview/src/main_window/main_window.cpp modified_dirview/src/main_window/main_window.cpp
 --- original_dirview/src/main_window/main_window.cpp	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/main_window/main_window.cpp	2026-06-21 14:59:24.909674120 +0300
-@@ -0,0 +1,117 @@
++++ modified_dirview/src/main_window/main_window.cpp	2026-06-23 20:21:38.508571596 +0300
+@@ -0,0 +1,114 @@
 +#include <QDir>
-+#include <QSize>
 +#include <QThread>
-+#include <QHeaderView>
 +#include <QGuiApplication>
 +#include <QScreen>
 +
@@ -652,13 +616,13 @@ diff -ruN original_dirview/src/main_window/main_window.cpp modified_dirview/src/
 +		qMax(1, static_cast<int>(maxThreadCount * kThreadPoolUsageRatio))
 +	);
 +
-+	_fsModel->setFilter(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden);
-+	_fsModel->setNameFilterDisables(false);
++	_fsModel->setFilter(QDir::NoSymLinks | QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden);
 +	_fsModel->setRootPath(_rootPath);
 +
 +	_proxyModel->setSourceModel(_fsModel);
 +	_proxyModel->setFilterKeyColumn(0);
 +	_proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
++	_proxyModel->setRecursiveFilteringEnabled(true);
 +
 +	_setupUi();
 +
@@ -686,7 +650,6 @@ diff -ruN original_dirview/src/main_window/main_window.cpp modified_dirview/src/
 +
 +	_treeView->setModel(_proxyModel);
 +	_treeView->setItemDelegateForColumn(1, _delegate);
-+	_treeView->setEditTriggers(QAbstractItemView::CurrentChanged | QAbstractItemView::SelectedClicked);
 +	_treeView->setAnimated(false);
 +	_treeView->setIndentation(kTreeViewIndentation);
 +	_treeView->setSortingEnabled(true);
@@ -694,7 +657,7 @@ diff -ruN original_dirview/src/main_window/main_window.cpp modified_dirview/src/
 +
 +
 +	setCentralWidget(widget);
-+	setWindowTitle("Astra test task");
++	setWindowTitle(kWindowTitle);
 +
 +	// Centering the window.
 +	int x = 0, y = 0;
@@ -740,8 +703,8 @@ diff -ruN original_dirview/src/main_window/main_window.cpp modified_dirview/src/
 +}
 diff -ruN original_dirview/src/main_window/main_window.h modified_dirview/src/main_window/main_window.h
 --- original_dirview/src/main_window/main_window.h	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/main_window/main_window.h	2026-06-21 14:59:24.909674120 +0300
-@@ -0,0 +1,42 @@
++++ modified_dirview/src/main_window/main_window.h	2026-06-23 20:21:38.508571596 +0300
+@@ -0,0 +1,43 @@
 +#ifndef MAIN_WINDOW_H
 +#define MAIN_WINDOW_H
 +
@@ -781,12 +744,13 @@ diff -ruN original_dirview/src/main_window/main_window.h modified_dirview/src/ma
 +	static constexpr int kDefaultWindowHeight = 400;
 +	static constexpr int kTreeViewIndentation = 20;
 +	static constexpr double kThreadPoolUsageRatio = 0.5;
++	static constexpr const char* kWindowTitle = "Astra test task";
 +};
 +
 +#endif // MAIN_WINDOW_H
 diff -ruN original_dirview/src/utils/CMakeLists.txt modified_dirview/src/utils/CMakeLists.txt
 --- original_dirview/src/utils/CMakeLists.txt	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/utils/CMakeLists.txt	2026-06-21 14:59:24.909674120 +0300
++++ modified_dirview/src/utils/CMakeLists.txt	2026-06-23 20:21:38.508571596 +0300
 @@ -0,0 +1,14 @@
 +add_library(utils STATIC
 +	format_utils/format_utils.cpp
@@ -804,48 +768,31 @@ diff -ruN original_dirview/src/utils/CMakeLists.txt modified_dirview/src/utils/C
 +)
 diff -ruN original_dirview/src/utils/file_utils/file_utils.cpp modified_dirview/src/utils/file_utils/file_utils.cpp
 --- original_dirview/src/utils/file_utils/file_utils.cpp	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/utils/file_utils/file_utils.cpp	2026-06-21 14:59:24.909674120 +0300
-@@ -0,0 +1,45 @@
++++ modified_dirview/src/utils/file_utils/file_utils.cpp	2026-06-23 20:21:38.508571596 +0300
+@@ -0,0 +1,28 @@
 +#include <QVector>
-+#include <QDir>
 +#include <QDirIterator>
 +#include <QFileInfo>
++#include <QSet>
 +
 +#include "file_utils.h"
 +
-+qint64 FileUtils::calculateDirSize(const QString& path)
++qint64 FileUtils::calculateDirSize(const QString& path, QDir::Filters filters)
 +{
 +	qint64 totalSize = 0;
-+	QVector<QString> dirsToVisit{path};
++	QDirIterator it(
++		path,
++		filters,
++		QDirIterator::Subdirectories
++	);
 +
-+	while (!dirsToVisit.isEmpty())
++	while (it.hasNext())
 +	{
-+		const QString currentDir = dirsToVisit.takeLast();
++		const QFileInfo info = it.next();
 +
-+		QDirIterator it(currentDir,
-+			QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden,
-+			QDirIterator::NoIteratorFlags
-+		);
-+
-+		while (it.hasNext())
++		if (!info.isDir())
 +		{
-+			it.next();
-+			const QFileInfo info = it.fileInfo();
-+
-+			// ignore symlinks.
-+			if (info.isSymLink())
-+			{
-+				continue;
-+			}
-+
-+			if (info.isDir())
-+			{
-+				dirsToVisit.push_back(info.filePath());
-+			}
-+			else
-+			{
-+				totalSize += info.size();
-+			}
++			totalSize += info.size();
 +		}
 +	}
 +
@@ -853,24 +800,25 @@ diff -ruN original_dirview/src/utils/file_utils/file_utils.cpp modified_dirview/
 +}
 diff -ruN original_dirview/src/utils/file_utils/file_utils.h modified_dirview/src/utils/file_utils/file_utils.h
 --- original_dirview/src/utils/file_utils/file_utils.h	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/utils/file_utils/file_utils.h	2026-06-21 14:59:24.909674120 +0300
-@@ -0,0 +1,13 @@
++++ modified_dirview/src/utils/file_utils/file_utils.h	2026-06-23 20:21:38.508571596 +0300
+@@ -0,0 +1,14 @@
 +#ifndef FILE_UTILS_H
 +#define FILE_UTILS_H
 +
 +#include <QString>
 +#include <QtGlobal>
++#include <QDir>
 +
 +class FileUtils
 +{
 +public:
-+	static qint64 calculateDirSize(const QString& path);
++	static qint64 calculateDirSize(const QString& path, QDir::Filters filters);
 +};
 +
 +#endif // FILE_UTILS_H
 diff -ruN original_dirview/src/utils/format_utils/format_utils.cpp modified_dirview/src/utils/format_utils/format_utils.cpp
 --- original_dirview/src/utils/format_utils/format_utils.cpp	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/utils/format_utils/format_utils.cpp	2026-06-21 14:59:24.909674120 +0300
++++ modified_dirview/src/utils/format_utils/format_utils.cpp	2026-06-23 20:21:38.508571596 +0300
 @@ -0,0 +1,19 @@
 +#include <QLocale>
 +
@@ -893,7 +841,7 @@ diff -ruN original_dirview/src/utils/format_utils/format_utils.cpp modified_dirv
 +}
 diff -ruN original_dirview/src/utils/format_utils/format_utils.h modified_dirview/src/utils/format_utils/format_utils.h
 --- original_dirview/src/utils/format_utils/format_utils.h	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/src/utils/format_utils/format_utils.h	2026-06-21 14:59:24.909674120 +0300
++++ modified_dirview/src/utils/format_utils/format_utils.h	2026-06-23 20:21:38.508571596 +0300
 @@ -0,0 +1,13 @@
 +#ifndef FORMAT_UTILS_H
 +#define FORMAT_UTILS_H

@@ -37,6 +37,7 @@ private:
 	static constexpr int kDefaultWindowHeight = 400;
 	static constexpr int kTreeViewIndentation = 20;
 	static constexpr double kThreadPoolUsageRatio = 0.5;
+	static constexpr const char* kWindowTitle = "Astra test task";
 };
 
 #endif // MAIN_WINDOW_H

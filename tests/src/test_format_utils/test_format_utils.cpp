@@ -1,3 +1,5 @@
+#include <QLocale>
+
 #include "test_format_utils.h"
 
 void TestFormatUtils::initTestCase()

@@ -1,5 +1,4 @@
 #include <QFileInfo>
-#include <QDir>
 
 #include "custom_system_model.h"
 #include "utils/format_utils/format_utils.h"
@@ -12,38 +11,28 @@ CustomSystemModel::CustomSystemModel(QThreadPool* threadPool, QObject* parent)
 
 QVariant CustomSystemModel::data(const QModelIndex& index, int role) const
 {
-	if (!index.isValid())
+	if (!index.isValid() || index.column() != 1)
 	{
 		return QFileSystemModel::data(index, role);
 	}
 
-	if (index.column() == 1)
+	switch (role)
 	{
-		if (role == Qt::TextAlignmentRole)
-		{
+		case Qt::TextAlignmentRole:
 			return QVariant(Qt::AlignHCenter | Qt::AlignVCenter);
-		}
 
-		const QString path = filePath(index);
+		case CustomRoles::SizeInBytesRole:
+			return _getRawSize(index);
 
-		if (role == CustomRoles::InProgressRole)
-		{
-			QReadLocker lock(&_cacheMutex);
-			return _inProgress.contains(path);
-		}
-		else if (role == Qt::DisplayRole)
-		{
-			QString sizeValue;
-			{
-				QReadLocker lock(&_cacheMutex);
-				sizeValue = _sizeCache.value(path);
-			}
+		case CustomRoles::InProgressRole:
+			return _getInProgressStatus(index);
 
-			return !sizeValue.isEmpty() ? sizeValue : QFileSystemModel::data(index, role);
-		}
+		case Qt::DisplayRole:
+			return _getFormattedSize(index, role);
+
+		default:
+			return QFileSystemModel::data(index, role);
 	}
-
-	return QFileSystemModel::data(index, role);
 }
 
 QVariant CustomSystemModel::headerData(int section, Qt::Orientation orientation, int role) const
@@ -70,7 +59,7 @@ void CustomSystemModel::calculateAndSetDirSize(const QModelIndex& index)
 		return;
 	}
 
-	QString path = info.absoluteFilePath();
+	QString path = filePath(index);
 
 	{
 		QWriteLocker lock(&_cacheMutex);
@@ -94,13 +83,49 @@ void CustomSystemModel::calculateAndSetDirSize(const QModelIndex& index)
 			return;
 		}
 
-		qint64 size = FileUtils::calculateDirSize(path);
+		qint64 size = FileUtils::calculateDirSize(path, filter());
 		{
 			QWriteLocker lock(&_cacheMutex);
 			_inProgress.remove(path);
-			_sizeCache[path] = FormatUtils::formatSize(size);
+			_sizeCache[path] = size;
 		}
 
 		emit dataChanged(persistentIndex, persistentIndex, {Qt::DisplayRole, CustomRoles::InProgressRole});
 	});
+}
+
+QVariant CustomSystemModel::_getRawSize(const QModelIndex& index) const
+{
+	const auto fInfo = fileInfo(index);
+
+	if (fInfo.isDir())
+	{
+		QReadLocker lock(&_cacheMutex);
+		return _sizeCache.value(filePath(index));
+	}
+	else
+	{
+		return fInfo.size();
+	}
+}
+
+QVariant CustomSystemModel::_getInProgressStatus(const QModelIndex& index) const
+{
+	QReadLocker lock(&_cacheMutex);
+	return _inProgress.contains(filePath(index));
+}
+
+QVariant CustomSystemModel::_getFormattedSize(const QModelIndex& index, int role) const
+{
+	constexpr qint64 kDefaultSizeValue = -1;
+
+	qint64 sizeValue = kDefaultSizeValue;
+	{
+		QReadLocker lock(&_cacheMutex);
+		sizeValue = _sizeCache.value(filePath(index), kDefaultSizeValue);
+	}
+
+	return sizeValue != kDefaultSizeValue
+		? FormatUtils::formatSize(sizeValue)
+		: QFileSystemModel::data(index, role);
 }

@@ -1,43 +1,26 @@
 #include <QVector>
-#include <QDir>
 #include <QDirIterator>
 #include <QFileInfo>
+#include <QSet>
 
 #include "file_utils.h"
 
-qint64 FileUtils::calculateDirSize(const QString& path)
+qint64 FileUtils::calculateDirSize(const QString& path, QDir::Filters filters)
 {
 	qint64 totalSize = 0;
-	QVector<QString> dirsToVisit{path};
+	QDirIterator it(
+		path,
+		filters,
+		QDirIterator::Subdirectories
+	);
 
-	while (!dirsToVisit.isEmpty())
+	while (it.hasNext())
 	{
-		const QString currentDir = dirsToVisit.takeLast();
+		const QFileInfo info = it.next();
 
-		QDirIterator it(currentDir,
-			QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden,
-			QDirIterator::NoIteratorFlags
-		);
-
-		while (it.hasNext())
+		if (!info.isDir())
 		{
-			it.next();
-			const QFileInfo info = it.fileInfo();
-
-			// ignore symlinks.
-			if (info.isSymLink())
-			{
-				continue;
-			}
-
-			if (info.isDir())
-			{
-				dirsToVisit.push_back(info.filePath());
-			}
-			else
-			{
-				totalSize += info.size();
-			}
+			totalSize += info.size();
 		}
 	}
 

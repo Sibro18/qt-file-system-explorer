@@ -1,6 +1,5 @@
 #include <QPainterPath>
 #include <QPen>
-#include <QColor>
 
 #include "custom_system_model_delegate.h"
 #include "../custom_system_model/custom_system_model.h"

@@ -1,7 +1,5 @@
 #include <QDir>
-#include <QSize>
 #include <QThread>
-#include <QHeaderView>
 #include <QGuiApplication>
 #include <QScreen>
 
@@ -29,13 +27,13 @@ MainWindow::MainWindow(QWidget *parent)
 		qMax(1, static_cast<int>(maxThreadCount * kThreadPoolUsageRatio))
 	);
 
-	_fsModel->setFilter(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden);
-	_fsModel->setNameFilterDisables(false);
+	_fsModel->setFilter(QDir::NoSymLinks | QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden);
 	_fsModel->setRootPath(_rootPath);
 
 	_proxyModel->setSourceModel(_fsModel);
 	_proxyModel->setFilterKeyColumn(0);
 	_proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+	_proxyModel->setRecursiveFilteringEnabled(true);
 
 	_setupUi();
 
@@ -63,7 +61,6 @@ void MainWindow::_setupUi()
 
 	_treeView->setModel(_proxyModel);
 	_treeView->setItemDelegateForColumn(1, _delegate);
-	_treeView->setEditTriggers(QAbstractItemView::CurrentChanged | QAbstractItemView::SelectedClicked);
 	_treeView->setAnimated(false);
 	_treeView->setIndentation(kTreeViewIndentation);
 	_treeView->setSortingEnabled(true);
@@ -71,7 +68,7 @@ void MainWindow::_setupUi()
 
 
 	setCentralWidget(widget);
-	setWindowTitle("Astra test task");
+	setWindowTitle(kWindowTitle);
 
 	// Centering the window.
 	int x = 0, y = 0;

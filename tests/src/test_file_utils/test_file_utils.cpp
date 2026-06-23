@@ -1,3 +1,6 @@
+#include <QTemporaryDir>
+#include <QFile>
+
 #include "test_file_utils.h"
 
 
@@ -21,7 +24,7 @@ void TestFileUtils::testEmptyDirectory()
 	QTemporaryDir tempDir;
 	QVERIFY(tempDir.isValid());
 
-	QCOMPARE(FileUtils::calculateDirSize(tempDir.path()), qint64(0));
+	QCOMPARE(FileUtils::calculateDirSize(tempDir.path(), kFilters), qint64(0));
 }
 
 void TestFileUtils::testSingleFile()
@@ -31,7 +34,7 @@ void TestFileUtils::testSingleFile()
 
 	QVERIFY(_createFileWithSize(tempDir.path() + "/test.txt", 100));
 
-	QCOMPARE(FileUtils::calculateDirSize(tempDir.path()), qint64(100));
+	QCOMPARE(FileUtils::calculateDirSize(tempDir.path(), kFilters), qint64(100));
 }
 
 void TestFileUtils::testMultipleFiles()
@@ -43,7 +46,7 @@ void TestFileUtils::testMultipleFiles()
 	QVERIFY(_createFileWithSize(tempDir.path() + "/file2.txt", 200));
 	QVERIFY(_createFileWithSize(tempDir.path() + "/file3.txt", 300));
 
-	QCOMPARE(FileUtils::calculateDirSize(tempDir.path()), qint64(600));
+	QCOMPARE(FileUtils::calculateDirSize(tempDir.path(), kFilters), qint64(600));
 }
 
 void TestFileUtils::testNestedDirectories()
@@ -64,7 +67,7 @@ void TestFileUtils::testNestedDirectories()
 	QVERIFY(_createFileWithSize(tempDir.path() + "/dir1/file2.txt", 200));
 	QVERIFY(_createFileWithSize(tempDir.path() + "/dir1/dir2/file3.txt", 300));
 
-	QCOMPARE(FileUtils::calculateDirSize(tempDir.path()), qint64(600));
+	QCOMPARE(FileUtils::calculateDirSize(tempDir.path(), kFilters), qint64(600));
 }
 
 void TestFileUtils::testDeepNesting()
@@ -83,7 +86,7 @@ void TestFileUtils::testDeepNesting()
 	// in deepest lvl, create the file.
 	QVERIFY(_createFileWithSize(currentPath + "/deep_file.txt", 42));
 
-	QCOMPARE(FileUtils::calculateDirSize(tempDir.path()), qint64(42));
+	QCOMPARE(FileUtils::calculateDirSize(tempDir.path(), kFilters), qint64(42));
 }
 
 void TestFileUtils::testHiddenFiles()
@@ -95,7 +98,7 @@ void TestFileUtils::testHiddenFiles()
 	QVERIFY(_createFileWithSize(tempDir.path() + "/visible.txt", 100));
 	QVERIFY(_createFileWithSize(tempDir.path() + "/.hidden", 200));
 
-	QCOMPARE(FileUtils::calculateDirSize(tempDir.path()), qint64(300));
+	QCOMPARE(FileUtils::calculateDirSize(tempDir.path(), kFilters), qint64(300));
 }
 
 void TestFileUtils::testIgnoresSymlinks()
@@ -111,13 +114,13 @@ void TestFileUtils::testIgnoresSymlinks()
 	));
 
 	// symlink must be ignored.
-	QCOMPARE(FileUtils::calculateDirSize(tempDir.path()), qint64(100));
+	QCOMPARE(FileUtils::calculateDirSize(tempDir.path(), kFilters), qint64(100));
 }
 
 void TestFileUtils::testNonExistentDirectory()
 {
 	// test behavior with non existent dir.
-	QCOMPARE(FileUtils::calculateDirSize("/nonexistent/path/12345"), qint64(0));
+	QCOMPARE(FileUtils::calculateDirSize("/nonexistent/path/12345", kFilters), qint64(0));
 }
 
 void TestFileUtils::testMixedContent()
@@ -153,7 +156,7 @@ void TestFileUtils::testMixedContent()
 	));
 
 	// Expecting: 100 + 50 + 200 + 300 = 650 (symlink ignored)
-	QCOMPARE(FileUtils::calculateDirSize(tempDir.path()), qint64(650));
+	QCOMPARE(FileUtils::calculateDirSize(tempDir.path(), kFilters), qint64(650));
 }
 
 QTEST_MAIN(TestFileUtils)

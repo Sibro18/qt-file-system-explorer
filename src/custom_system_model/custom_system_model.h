@@ -16,6 +16,7 @@ public:
 	enum CustomRoles
 	{
 		InProgressRole = Qt::UserRole + 1,
+		SizeInBytesRole = Qt::UserRole + 2
 	};
 
 	explicit CustomSystemModel(QThreadPool* threadPool, QObject* parent = nullptr);
@@ -24,9 +25,13 @@ public:
 	void calculateAndSetDirSize(const QModelIndex& index);
 private:
 	mutable QReadWriteLock _cacheMutex;
-	QHash<QString, QString> _sizeCache;
+	QHash<QString, qint64> _sizeCache;
 	QSet<QString> _inProgress;
 	QThreadPool* _threadPool;
+
+	QVariant _getRawSize(const QModelIndex& index) const;
+	QVariant _getInProgressStatus(const QModelIndex& index) const;
+	QVariant _getFormattedSize(const QModelIndex& index, int role) const;
 };
 
 #endif // CUSTOM_SYSTEM_MODEL_H

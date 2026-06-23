@@ -4,6 +4,7 @@
 #include <QStyledItemDelegate>
 #include <QModelIndex>
 #include <QPainter>
+#include <QColor>
 
 class CustomSystemModelDelegate : public QStyledItemDelegate
 {
