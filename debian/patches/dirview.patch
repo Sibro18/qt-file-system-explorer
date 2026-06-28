@@ -1,10 +1,10 @@
 diff -ruN original_dirview/CMakeLists.txt modified_dirview/CMakeLists.txt
 --- original_dirview/CMakeLists.txt	1970-01-01 03:00:00.000000000 +0300
-+++ modified_dirview/CMakeLists.txt	2026-06-28 02:38:25.444792357 +0300
++++ modified_dirview/CMakeLists.txt	2026-06-28 23:26:28.457587170 +0300
 @@ -0,0 +1,49 @@
 +cmake_minimum_required(VERSION 3.5)
 +
-+project(astra-developer-test-task VERSION 0.1 LANGUAGES CXX)
++project(qt-file-system-explorer VERSION 0.1 LANGUAGES CXX)
 +
 +set(CMAKE_INCLUDE_CURRENT_DIR ON)
 +

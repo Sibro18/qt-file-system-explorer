@@ -1,4 +1,4 @@
-Source: astra-developer-test-task
+Source: qt-file-system-explorer
 Section: devel
 Priority: optional
 Maintainer: Sibro <brovtsyns@mail.ru>
@@ -8,9 +8,9 @@ Build-Depends:
  cmake,
  qtbase5-dev,
 Standards-Version: 4.6.2
-Homepage: https://github.com/Sibro18/astra_developer_test_task
+Homepage: https://github.com/Sibro18/qt-file-system-explorer
 
-Package: astra-developer-test-task
+Package: qt-file-system-explorer
 Architecture: any
 Depends:
  ${shlibs:Depends},
