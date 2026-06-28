@@ -17,8 +17,8 @@ sudo apt-get install -y build-essential cmake qtbase5-dev qtbase5-dev-tools
 
 ## 1. Клонирование репозитория
 ```bash
-git clone https://github.com/Sibro18/astra-developer-test-task.git
-cd astra-developer-test-task
+git clone https://github.com/Sibro18/qt-file-system-explorer.git
+cd qt-file-system-explorer
 ```
 
 ## 2.Убедитесь, что установлены инструменты упаковки:
@@ -33,25 +33,25 @@ cd astra-developer-test-task
 
 ## 4.Установите полученный пакет:
   ```bash
-  sudo dpkg -i ../astra-developer-test-task_0.1-1_amd64.deb
+  sudo dpkg -i ../qt-file-system-explorer_0.1-1_amd64.deb
   ```
 
 ## 5. Запустите установленное приложение:
   ```bash
-  astra-developer-test-task
+  qt-file-system-explorer
   ```
 
 ## 6. Удаление установленного приложения:
   ```bash
-  sudo apt-get remove -y astra-developer-test-task
+  sudo apt-get remove -y qt-file-system-explorer
   ```
   
 # Сборка из исходников
 
 ## 1. Клонирование репозитория
 ```bash
-git clone https://github.com/Sibro18/astra-developer-test-task.git
-cd astra-developer-test-task
+git clone https://github.com/Sibro18/qt-file-system-explorer.git
+cd qt-file-system-explorer
 ```
 
 ## 2. Конфигурация и сборка
@@ -63,7 +63,7 @@ cmake --build build
 
 ## 3. Запуск приложения
 ```bash
-./build/astra-developer-test-task
+./build/qt-file-system-explorer
 ```
 
 # Тестирование
@@ -109,4 +109,4 @@ ctest -V
 - **Test**: Автоматический запуск юнит-тестов.
 - **Package**: Сборка `.deb` артефакта при каждом пуше в ветку `main`.
 
-Статус сборок доступен во вкладке [Actions](https://github.com/Sibro18/astra-developer-test-task/actions).
+Статус сборок доступен во вкладке [Actions](https://github.com/Sibro18/qt-file-system-explorer/actions).

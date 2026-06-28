@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Source: <url://example.com>
-Upstream-Name: https://github.com/Sibro18/astra_developer_test_task
+Upstream-Name: https://github.com/Sibro18/qt-file-system-explorer
 Upstream-Contact: Sibro <brovtsyns@mail.ru>
 
 Files: *

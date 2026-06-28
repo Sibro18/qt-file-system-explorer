@@ -1,4 +1,4 @@
-astra-developer-test-task (0.1-1) unstable; urgency=medium
+qt-file-system-explorer (0.1-1) unstable; urgency=medium
 
   * Initial release.
   * File system viewer with directory size calculation.
